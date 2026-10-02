@@ -1,5 +1,7 @@
 # Quota routing and WebSocket transport
 
+For a new server installation, see [Server setup](../deploy/README.md).
+
 This fork uses the management UI from
 https://github.com/rexlManu/Cli-Proxy-API-Management-Center.
 The UI opens the quota ledger by default. It has provider totals, account rows,

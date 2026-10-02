@@ -1,0 +1,46 @@
+name: cliproxy-fork
+
+services:
+  proxy:
+    image: cliproxy-fork:local
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        COMMIT: ${PROXY_COMMIT:-none}
+    restart: unless-stopped
+    volumes:
+      - ./data/config:/config
+      - ./data/auths:/root/.cli-proxy-api
+      - ./data/logs:/CLIProxyAPI/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: docker.io/library/caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - proxy
+    environment:
+      DOMAIN: ${DOMAIN:?Run ./init.sh with your domain first}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:

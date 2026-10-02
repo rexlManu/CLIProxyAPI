@@ -1,0 +1,36 @@
+config-version: 8
+
+server:
+  host: ""
+  port: 8317
+
+management:
+  allow-remote: true
+  secret-key: "REPLACE_MANAGEMENT_KEY"
+  disable-auto-update-panel: true
+  panel-github-repository: "https://github.com/rexlManu/Cli-Proxy-API-Management-Center"
+
+access:
+  api-keys:
+    - "REPLACE_API_KEY"
+
+routing:
+  strategy: earliest-reset
+  retry:
+    request-retry: 3
+    max-retry-credentials: 0
+    max-retry-interval: 30
+
+oauth:
+  auth-dir: "/root/.cli-proxy-api"
+  providers:
+    codex:
+      enable-websocket-upstream: true
+
+observability:
+  logs:
+    request-log: false
+    logs-max-total-size-mb: 100
+    error-logs-max-files: 10
+  usage:
+    usage-statistics-enabled: true

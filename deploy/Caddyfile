@@ -1,0 +1,5 @@
+{$DOMAIN} {
+	reverse_proxy proxy:8317 {
+		flush_interval -1
+	}
+}
