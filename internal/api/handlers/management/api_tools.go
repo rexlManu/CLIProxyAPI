@@ -214,6 +214,7 @@ func (h *Handler) APICall(c *gin.Context) {
 	}
 	httpClient.Transport = h.apiCallTransport(auth, requestProxyURL)
 
+	quotaObservedAt := time.Now()
 	resp, errDo := httpClient.Do(req)
 	if errDo != nil {
 		log.WithError(errDo).Debug("management APICall request failed")
@@ -230,6 +231,11 @@ func (h *Handler) APICall(c *gin.Context) {
 	if errReadAll != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to read response"})
 		return
+	}
+
+	if c.GetBool(ConfigV8ContextKey) && h.authManager != nil && auth != nil && method == http.MethodGet && resp.StatusCode == http.StatusOK && resp.Request != nil {
+		headers := quotaUsageHeaders(auth.Provider, resp.Request.URL, respBody)
+		h.authManager.ObserveQuotaHeaders(auth.ID, headers, quotaObservedAt)
 	}
 
 	c.JSON(http.StatusOK, apiCallResponse{

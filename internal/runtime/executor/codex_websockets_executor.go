@@ -31,11 +31,8 @@ func NewCodexWebsocketsExecutor(cfg *config.Config) *CodexWebsocketsExecutor {
 	}
 }
 
-// CodexAutoExecutor routes Codex requests to the websocket transport only when:
-//  1. The downstream transport is websocket, and
-//  2. The selected auth enables websockets.
-//
-// For non-websocket downstream requests, it always uses the legacy HTTP implementation.
+// CodexAutoExecutor supports downstream WebSockets and optional upstream WebSockets
+// for HTTP/SSE clients. Compact requests continue to use the HTTP executor.
 type CodexAutoExecutor struct {
 	httpExec *CodexExecutor
 	wsExec   *CodexWebsocketsExecutor
@@ -68,7 +65,7 @@ func (e *CodexAutoExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
 	if e == nil || e.httpExec == nil || e.wsExec == nil {
 		return cliproxyexecutor.Response{}, fmt.Errorf("codex auto executor: executor is nil")
 	}
-	if cliproxyexecutor.DownstreamWebsocket(ctx) && codexWebsocketsEnabled(auth) {
+	if e.useWebsocketUpstream(ctx, auth) {
 		return e.wsExec.Execute(ctx, auth, req, opts)
 	}
 	if cliproxyexecutor.RequiredUpstreamWebsocket(ctx) {
@@ -81,7 +78,7 @@ func (e *CodexAutoExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
 	if e == nil || e.httpExec == nil || e.wsExec == nil {
 		return nil, fmt.Errorf("codex auto executor: executor is nil")
 	}
-	if cliproxyexecutor.DownstreamWebsocket(ctx) && codexWebsocketsEnabled(auth) {
+	if e.useWebsocketUpstream(ctx, auth) {
 		return e.wsExec.ExecuteStream(ctx, auth, req, opts)
 	}
 	if cliproxyexecutor.RequiredUpstreamWebsocket(ctx) {
@@ -118,7 +115,22 @@ func (e *CodexAutoExecutor) UpstreamDisconnectChan(sessionID string) <-chan erro
 	return e.wsExec.UpstreamDisconnectChan(sessionID)
 }
 
+func (e *CodexAutoExecutor) useWebsocketUpstream(ctx context.Context, auth *cliproxyauth.Auth) bool {
+	if e == nil || e.httpExec == nil || auth == nil {
+		return false
+	}
+	enabled := e.httpExec.cfg != nil && e.httpExec.cfg.Codex.EnableWebsocketUpstream
+	if !cliproxyexecutor.DownstreamWebsocket(ctx) && !enabled {
+		return false
+	}
+	return codexWebsocketsEnabledWithDefault(auth, enabled && auth.Provider == "codex" && auth.AuthKind() == cliproxyauth.AuthKindOAuth)
+}
+
 func codexWebsocketsEnabled(auth *cliproxyauth.Auth) bool {
+	return codexWebsocketsEnabledWithDefault(auth, false)
+}
+
+func codexWebsocketsEnabledWithDefault(auth *cliproxyauth.Auth, defaultEnabled bool) bool {
 	if auth == nil {
 		return false
 	}
@@ -131,11 +143,11 @@ func codexWebsocketsEnabled(auth *cliproxyauth.Auth) bool {
 		}
 	}
 	if len(auth.Metadata) == 0 {
-		return false
+		return defaultEnabled
 	}
 	raw, ok := auth.Metadata["websockets"]
 	if !ok || raw == nil {
-		return false
+		return defaultEnabled
 	}
 	switch v := raw.(type) {
 	case bool:
@@ -147,7 +159,7 @@ func codexWebsocketsEnabled(auth *cliproxyauth.Auth) bool {
 		}
 	default:
 	}
-	return false
+	return defaultEnabled
 }
 
 // SupportsApplyPatch requires both selectable transports to support the tool.

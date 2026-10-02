@@ -12,6 +12,26 @@ const (
 	maxQuotaSignalValue   = 512
 )
 
+// ObserveQuotaHeaders records a management quota refresh without changing
+// cooldowns, error state, request counts or credential refresh timestamps.
+func (m *Manager) ObserveQuotaHeaders(authID string, headers http.Header, observedAt time.Time) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	auth := m.auths[authID]
+	if auth == nil || observedAt.Before(auth.Quota.ObservedAt) || !auth.Quota.ObserveResponseHeadersForProvider(auth.Provider, headers, observedAt) {
+		m.mu.Unlock()
+		return
+	}
+	auth.Generation++
+	snapshot := auth.Clone()
+	m.mu.Unlock()
+	if m.scheduler != nil {
+		m.scheduler.upsertAuth(snapshot)
+	}
+}
+
 // ProviderSupportsQuotaObservation reports whether the named provider emits a
 // passive credential-level quota snapshot understood by collectQuotaSignals.
 func ProviderSupportsQuotaObservation(provider string) bool {

@@ -79,7 +79,7 @@ management:
   # base-url: "https://proxy.example.com"
 
   # GitHub repository for the management control panel. Accepts a repository URL or releases API URL.
-  panel-github-repository: "https://github.com/router-for-me/Cli-Proxy-API-Management-Center"
+  panel-github-repository: "https://github.com/rexlManu/Cli-Proxy-API-Management-Center"
 
 # Client authentication for the proxy API. These are not upstream provider keys.
 access:
@@ -126,7 +126,10 @@ access:
 
 # Routing strategy for selecting credentials when multiple match.
 routing:
-  strategy: "round-robin" # round-robin (default), weighted-round-robin, fill-first
+  strategy: "earliest-reset" # earliest-reset (default), round-robin, weighted-round-robin, fill-first
+  # Prefer available Claude/Codex accounts whose longest quota window resets sooner.
+  # Uses observed upstream quota headers; unknown or expired resets fall back to round-robin.
+  # Explicit priorities and existing session-affinity bindings still take precedence.
   # weighted-round-robin uses each credential's integer weight (default 1, maximum 1,000,000).
   # Non-positive weights exclude the credential while this strategy is active.
   # For OAuth/file credentials, add a top-level numeric "weight" field to the auth JSON.
@@ -857,6 +860,10 @@ oauth:
 
     # Codex provider behavior.
     codex:
+      # Let HTTP/SSE clients use upstream WebSockets for Codex OAuth accounts.
+      # Per-account websockets: false forces HTTP. Compact requests still use HTTP.
+      enable-websocket-upstream: true
+
       # Experimental full-duplex Codex Responses WebSocket steering (default: false).
       # Keeps one upstream account/model per socket; accepted input is never replayed.
       response-steering: false
