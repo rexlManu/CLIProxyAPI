@@ -16,7 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-ARG VERSION=earliest-reset
+ARG VERSION=v8.0.42-earliest-reset
 ARG COMMIT=none
 ARG BUILD_DATE=unknown
 RUN CGO_ENABLED=1 GOOS=linux go build -buildvcs=false -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -X 'main.BuildDate=${BUILD_DATE}'" -o /CLIProxyAPI ./cmd/server/
