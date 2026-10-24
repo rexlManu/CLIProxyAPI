@@ -8,7 +8,7 @@ RUN git init && git remote add origin https://github.com/rexlManu/Cli-Proxy-API-
 RUN bun install --frozen-lockfile
 RUN VERSION=quota-ledger-${MANAGEMENT_UI_COMMIT} bun run build
 
-FROM docker.io/library/golang:1.26-bookworm AS builder
+FROM docker.io/library/golang:1.26.10-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential git && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -buildvcs=false -ldflags="-s -w -X 'main.V
 
 FROM docker.io/library/debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /CLIProxyAPI
 COPY --from=builder /CLIProxyAPI ./CLIProxyAPI
 COPY --from=panel /panel/dist/index.html /opt/cliproxy-panel/management.html
