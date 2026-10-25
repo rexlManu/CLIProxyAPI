@@ -113,6 +113,11 @@ func defaultPluginInstanceConfigNode() *yaml.Node {
 
 // ClaudeConfig configures provider-wide Claude request behavior.
 type ClaudeConfig struct {
+	// CloakAgentSDK applies the configured CLI cloak policy to sdk-* clients.
+	// Explicit never/uncloak policies still take precedence. Default false keeps
+	// native Agent SDK requests unchanged.
+	CloakAgentSDK bool `yaml:"cloak-agent-sdk" json:"cloak-agent-sdk"`
+
 	// ModelLevelCooling scopes Claude quota cooldowns to the requested model
 	// rather than cooling down the entire credential across all sibling models.
 	ModelLevelCooling bool `yaml:"model-level-cooling" json:"model-level-cooling"`

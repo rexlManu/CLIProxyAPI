@@ -421,6 +421,12 @@ upstream:
     model-level-cooling: false
 
   claude:
+    # Apply the configured CLI cloak policy to Agent SDK clients, including sdk-ts
+    # and sdk-cli. This rewrites their client identity and can change prompts,
+    # tool aliases, and cache markers. Explicit never/uncloak policies still win.
+    # It does not change or guarantee Anthropic's quota accounting. Default false.
+    cloak-agent-sdk: false
+
     # When true, scope quota cooldowns to the requested model rather than cooling down
     # the entire credential across all sibling models. Default is false.
     model-level-cooling: false

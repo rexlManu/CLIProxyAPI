@@ -8,6 +8,31 @@ The UI opens the quota ledger by default. It has provider totals, account rows,
 quota bars, reset times, and an email visibility control. Dark mode uses a black
 background and white primary text.
 
+## Agent SDK client compatibility
+
+Upstream v8.0.36 recognizes `sdk-ts` requests as native Claude Code and passes
+through their SDK identity. The optional setting below applies the existing
+CLI cloak policy to `sdk-*` clients instead:
+
+```yaml
+upstream:
+  claude:
+    cloak-agent-sdk: true
+```
+
+The default is `false`. Interactive CLI and VS Code requests keep their native
+behavior. Explicit `never` or `uncloak` credential policies still take precedence.
+With cloaking active, SDK requests use the CLI User-Agent and `cc_entrypoint=cli`.
+The existing cloak path can also move system instructions, alias tool names,
+and adjust cache markers. Caller instructions remain part of the request unless
+strict mode is enabled.
+Messages, streaming Messages, and token counting use the same selection policy.
+User payload rules still run after the built-in payload changes.
+
+This is a client identity compatibility option. It does not increase a quota or
+guarantee lower usage. Anthropic controls subscription accounting. See the
+[Agent SDK quota report](https://media.wtf/claude-5h-window-agent-sdk.html).
+
 ## Configuration
 
 For the v8 configuration layout:

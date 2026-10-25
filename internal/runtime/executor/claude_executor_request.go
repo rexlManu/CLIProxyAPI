@@ -1236,6 +1236,10 @@ func applyClaudeHeadersWithNativeProfile(
 	useAPIKey := !credentialUsesBearer
 	fp := resolveClaudeFingerprintPolicy(cfg, auth, apiKey)
 	wirePolicy, _ := resolveClaudeWirePolicy(cfg, auth, apiKey, confirmedClaudeCode)
+	if wirePolicy.Cloak {
+		confirmedClaudeCode = false
+		helperProfile = false
+	}
 	if wirePolicy.Uncloak {
 		confirmedClaudeCode = false
 		helperProfile = false

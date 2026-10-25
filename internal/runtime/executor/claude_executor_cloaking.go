@@ -1580,12 +1580,13 @@ func withEphemeralCacheControl(rawBlock string) string {
 }
 
 type claudeWirePolicy struct {
-	OAuth                bool // real OAuth token runtime identity
-	ProfileClaudeCodeCLI bool // request fingerprint looks like Claude Code CLI
-	ConfirmedClaudeCode  bool
-	Cloak                bool
-	Uncloak              bool
-	ExplicitNever        bool
+	OAuth                 bool // real OAuth token runtime identity
+	ProfileClaudeCodeCLI  bool // request fingerprint looks like Claude Code CLI
+	ConfirmedClaudeCode   bool
+	PreserveCallerSession bool
+	Cloak                 bool
+	Uncloak               bool
+	ExplicitNever         bool
 }
 
 type claudeCloakSettings struct {
@@ -1602,13 +1603,25 @@ func isClaudeCodeIdentitySystemText(text string) bool {
 }
 
 func isEffectiveConfirmedClaudeCode(detection helps.ClaudeCodeRequestDetection, policy claudeWirePolicy) bool {
-	if policy.Uncloak {
+	if policy.Uncloak || policy.Cloak {
 		return false
 	}
 	if detection.Confirmed {
 		return true
 	}
 	return !policy.Cloak && policy.ExplicitNever && detection.ConfirmedShape
+}
+
+// resolveClaudeRequestWirePolicy keeps validated SDK identity separate from the
+// selected wire profile, so cloaking does not discard session or helper signals.
+func resolveClaudeRequestWirePolicy(cfg *config.Config, auth *cliproxyauth.Auth, apiKey string, detection helps.ClaudeCodeRequestDetection) (claudeWirePolicy, claudeCloakSettings) {
+	passthrough := detection.Confirmed
+	if cfg != nil && cfg.Claude.CloakAgentSDK && strings.HasPrefix(detection.Entrypoint, "sdk-") {
+		passthrough = false
+	}
+	policy, settings := resolveClaudeWirePolicy(cfg, auth, apiKey, passthrough)
+	policy.PreserveCallerSession = !policy.Uncloak && (detection.Confirmed || isEffectiveConfirmedClaudeCode(detection, policy))
+	return policy, settings
 }
 
 func stripClaudeCodeSystemBlocks(payload []byte) []byte {
