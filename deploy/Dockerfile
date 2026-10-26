@@ -3,7 +3,7 @@ FROM docker.io/oven/bun:1.3.14 AS panel
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /panel
-ARG MANAGEMENT_UI_COMMIT=a9eda98ad825b166f6516f7b04c7b4a2b4f890de
+ARG MANAGEMENT_UI_COMMIT=53d220f58ecf76adfa8d349322145132e7d96758
 RUN git init && git remote add origin https://github.com/rexlManu/Cli-Proxy-API-Management-Center.git && git fetch --depth 1 origin "${MANAGEMENT_UI_COMMIT}" && git checkout --detach FETCH_HEAD
 RUN bun install --frozen-lockfile
 RUN VERSION=quota-ledger-${MANAGEMENT_UI_COMMIT} bun run build

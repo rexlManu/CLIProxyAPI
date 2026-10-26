@@ -112,3 +112,21 @@ panel, build that repository with its documented Bun command and copy
 Set `management.disable-auto-update-panel: true` when using a locally built panel.
 To use automatic downloads, publish a `management.html` release asset in the UI
 fork. Creating the fork or pushing source changes does not create that asset.
+
+## Persistent quota history
+
+The proxy records Claude and Codex quota readings every five minutes. Readings
+are stored indefinitely in `quota-history.jsonl` inside the auth directory.
+The file contains account indexes and quota values, without account tokens.
+Keep the auth volume when you deploy a replacement.
+
+The management API exposes readings at `GET /v8/management/quota/history`.
+The optional `since` query parameter uses Unix seconds and defaults to the
+last 24 hours. Use `since=0` to read all stored history.
+
+The Claude and Codex quota tabs show combined weekly capacity, historical
+consumption per hour, and a forecast for the next one, three, or seven days.
+Forecasts use recent consumption and provider reset times. They are estimates.
+Resets and missing readings do not count as consumption. Accounts with no
+reading in the last hour do not contribute to the forecast or current capacity.
+History starts with the first deployment of this feature.

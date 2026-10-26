@@ -104,6 +104,9 @@ type Server struct {
 	keepAliveHeartbeat chan struct{}
 	keepAliveStop      chan struct{}
 
+	// stopQuotaHistory ends the quota history recorder started in Start.
+	stopQuotaHistory context.CancelFunc
+
 	exampleAPIKeySafeModeEnabled bool
 	exampleAPIKeySafeModeActive  atomic.Bool
 }
@@ -341,6 +344,11 @@ func (s *Server) Start() error {
 	s.muxHTTPListener = httpListener
 	s.listenerMu.Unlock()
 
+	historyCtx, stopHistory := context.WithCancel(context.Background())
+	defer stopHistory()
+	s.stopQuotaHistory = stopHistory
+	s.mgmt.StartQuotaHistory(historyCtx)
+
 	httpErrCh := make(chan error, 1)
 	acceptErrCh := make(chan error, 1)
 
@@ -414,6 +422,10 @@ func (s *Server) Start() error {
 //   - error: An error if the server fails to stop
 func (s *Server) Stop(ctx context.Context) error {
 	log.Debug("Stopping API server...")
+
+	if s.stopQuotaHistory != nil {
+		s.stopQuotaHistory()
+	}
 
 	if s.keepAliveEnabled {
 		select {
