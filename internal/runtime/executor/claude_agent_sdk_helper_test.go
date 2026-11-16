@@ -18,7 +18,7 @@ import (
 )
 
 func TestClaudeExecutorAgentSDKHaiku55TitleHelperWire(t *testing.T) {
-	const sdkUA = "claude-cli/2.1.304 (external, sdk-ts, agent-sdk/0.3.276)"
+	const sdkUA = "claude-cli/2.1.325 (external, sdk-ts, agent-sdk/0.3.276)"
 	const helperBetas = "interleaved-thinking-2025-05-14,thinking-token-count-2026-05-13,context-management-2025-06-27,prompt-caching-scope-2026-01-05,per-turn-control-2026-07-01,mid-conversation-tool-changes-2026-07-01,inline-tools-2026-09-15,advisor-tool-2026-03-01,effort-2025-11-24,structured-outputs-2025-12-15,extended-cache-ttl-2025-04-11"
 	const sdkIdentity = "You are a Claude agent, built on Anthropic's Claude Agent SDK."
 	const titleInstruction = "You are naming a coding session so the user can pick it out of a long list of sessions."
@@ -27,7 +27,7 @@ func TestClaudeExecutorAgentSDKHaiku55TitleHelperWire(t *testing.T) {
 		t.Fatal(errMarshal)
 	}
 	// Keep the measured title-helper shape from TestDetectClaudeCodeRequestRecognizesAgentSDKHaiku55Helpers.
-	payload := []byte(`{"max_tokens":1024,"messages":[{"role":"user","content":[{"type":"text","text":"name session"}]}],"metadata":{"user_id":` + string(encodedUserID) + `},"model":"claude-haiku-5-5","output_config":{"effort":"medium","format":{"type":"json_schema","schema":{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}}},"stream":true,"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.304.c80; cc_entrypoint=sdk-ts"},{"type":"text","text":"` + sdkIdentity + `"},{"type":"text","text":"` + titleInstruction + `"}],"tools":[]}`)
+	payload := []byte(`{"max_tokens":1024,"messages":[{"role":"user","content":[{"type":"text","text":"name session"}]}],"metadata":{"user_id":` + string(encodedUserID) + `},"model":"claude-haiku-5-5","output_config":{"effort":"medium","format":{"type":"json_schema","schema":{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}}},"stream":true,"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.325.c80; cc_entrypoint=sdk-ts"},{"type":"text","text":"` + sdkIdentity + `"},{"type":"text","text":"` + titleInstruction + `"}],"tools":[]}`)
 	incoming := make(http.Header)
 	for name, value := range map[string]string{
 		"Accept":            "application/json",
@@ -42,7 +42,7 @@ func TestClaudeExecutorAgentSDKHaiku55TitleHelperWire(t *testing.T) {
 		"X-Stainless-Lang":                          "js",
 		"X-Stainless-Runtime":                       "node",
 		"X-Stainless-Package-Version":               "0.128.0",
-		"X-Stainless-Runtime-Version":               "v26.3.0",
+		"X-Stainless-Runtime-Version":               "v26.12.1",
 		"X-Stainless-OS":                            "MacOS",
 		"X-Stainless-Arch":                          "arm64",
 		"X-Stainless-Retry-Count":                   "0",
@@ -143,7 +143,7 @@ func TestClaudeExecutorAgentSDKHaiku55TitleHelperWire(t *testing.T) {
 						if strings.Contains(gjson.GetBytes(seen.body, "system").Raw, "Claude Agent SDK") {
 							t.Error("cloaked system still contains SDK identity")
 						}
-						if got := seen.headers.Get("X-Stainless-Package-Version"); got == "" || got == incoming.Get("X-Stainless-Package-Version") {
+						if got := seen.headers.Get("X-Stainless-Package-Version"); got != "0.128.0" {
 							t.Errorf("X-Stainless-Package-Version = %q, want CLI software profile", got)
 						}
 						if got := seen.headers.Get("X-App"); got != "cli" {
@@ -168,7 +168,7 @@ func TestClaudeExecutorAgentSDKHaiku55TitleHelperWire(t *testing.T) {
 							t.Errorf("%s = %q, want SDK helper value %q", name, got, want)
 						}
 					}
-					if !strings.Contains(billing, "cc_version=2.1.304.c80;") || !strings.Contains(billing, "cc_entrypoint=sdk-ts") {
+					if !strings.Contains(billing, "cc_version=2.1.325.c80;") || !strings.Contains(billing, "cc_entrypoint=sdk-ts") {
 						t.Errorf("billing = %q, want original SDK version and entrypoint", billing)
 					}
 					if got := gjson.GetBytes(seen.body, "system.1.text").String(); got != sdkIdentity {

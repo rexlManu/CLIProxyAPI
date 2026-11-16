@@ -17,7 +17,7 @@ func TestDetectClaudeCodeRequestAgentSDKCloaking(t *testing.T) {
 						t.Fatal(errParse)
 					}
 					headers := confirmedClaudeCodeHeaders()
-					headers.Set("User-Agent", fmt.Sprintf("claude-cli/2.1.304 (external, %s, agent-sdk/0.3.276)", entrypoint))
+					headers.Set("User-Agent", fmt.Sprintf("claude-cli/2.1.325 (external, %s, agent-sdk/0.3.276)", entrypoint))
 					payload := claudeCodeDetectionPayload(validClaudeCodeMetadataUserID)
 					detection := DetectClaudeCodeRequest(headers, payload, countTokens, cfg)
 					if !detection.Confirmed {

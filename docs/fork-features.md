@@ -8,6 +8,29 @@ The UI opens the quota ledger by default. It has provider totals, account rows,
 quota bars, reset times, and an email visibility control. Dark mode uses a black
 background and white primary text.
 
+## Claude Code 2.1.321 compatibility
+
+The default Claude software profile uses Claude Code `2.1.321`, Stainless SDK
+`0.128.0`, and Node `v26.12.1`. The billing version and beta headers use the
+same CLI baseline. This supports models such as Fable 5.2 that reject Claude
+Code versions below `2.1.290`.
+
+This backports these upstream changes:
+
+- [b4e7dbd2](https://github.com/router-for-me/CLIProxyAPI/commit/b4e7dbd2c984ec4a74d829ee0425430a20146c77) updates the measured CLI profile, beta ordering, and model capability gates.
+- [542a525f](https://github.com/router-for-me/CLIProxyAPI/commit/542a525fcf2a20ec920e538d94d78471b9dda2f5) recognizes native User-Agent extension fields.
+- [59304330](https://github.com/router-for-me/CLIProxyAPI/commit/593043301416879f5476939045db063003928771) preserves request fields without storing them as the credential's device identity.
+- [6db7d4b8](https://github.com/router-for-me/CLIProxyAPI/commit/6db7d4b839d86c5b24e17bbe73bcd4db18ef1b1a) adds Fable 5.2 preserved-thinking and timing support.
+- [6876a2eb](https://github.com/router-for-me/CLIProxyAPI/commit/6876a2eb416d10235f4aac7458bcd04c751e26f7) recognizes background requests with `X-App: cli-bg`.
+
+The fork keeps its existing native-client allowlist and opt-in Agent SDK CLI
+compatibility. Quota polling uses the same profile defaults as model requests.
+
+Explicit `upstream.claude.header-defaults` values still override the baseline.
+Remove obsolete software overrides, or update the User-Agent, package version,
+and runtime version together. Cached profiles normalize to the configured
+baseline. No credential or cache deletion is needed.
+
 ## Agent SDK client compatibility
 
 Upstream v8.0.36 recognizes `sdk-ts` requests as native Claude Code and passes

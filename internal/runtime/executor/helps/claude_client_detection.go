@@ -26,11 +26,7 @@ const (
 	claudeDefaultStainlessTimeout = "600"
 )
 
-var (
-	claudeCodeUserAgentPattern        = regexp.MustCompile(`(?i)^claude-cli/`)
-	claudeCodeUserAgentDetailsPattern = regexp.MustCompile(`(?i)^claude-cli/\S+\s+\(external,\s*([^,)]+)(?:,\s*agent-sdk/([^,)]+))?`)
-	claudeCodeNativeUserAgentPattern  = regexp.MustCompile(`(?i)^claude-cli/[0-9]+\.[0-9]+\.[0-9]+\s+\(external,\s*[^,)]+(?:,\s*agent-sdk/[0-9]+\.[0-9]+\.[0-9]+)?\)$`)
-)
+var claudeCodeUserAgentPattern = regexp.MustCompile(`(?i)^claude-cli/`)
 
 var claudeCodeSubclientByEntrypoint = map[string]string{
 	"cli":                       "claude-code-cli",
@@ -142,15 +138,15 @@ func DetectClaudeCodeRequest(headers http.Header, payload []byte, countTokens bo
 	if len(configs) > 0 {
 		cfg = configs[0]
 	}
-	userAgent := headerValue(headers, "User-Agent")
-	entrypoint, agentSDKVersion := parseClaudeCodeUserAgentDetails(userAgent)
+	userAgent, validUserAgent := parseClaudeCodeUserAgent(headerValue(headers, "User-Agent"))
+	entrypoint := userAgent.entrypoint
 	detection := ClaudeCodeRequestDetection{
-		XAppCLI:         headerValue(headers, "X-App") == "cli",
-		UserAgent:       plausibleClaudeCodeUserAgent(userAgent, cfg),
+		XAppCLI:         isNativeClaudeXApp(headerValue(headers, "X-App")),
+		UserAgent:       validUserAgent && plausibleClaudeCodeVersion(userAgent.version, cfg),
 		BetasPresent:    headerContainsClaudeCodeBeta(headers),
 		Entrypoint:      entrypoint,
 		Subclient:       claudeCodeSubclientByEntrypoint[entrypoint],
-		AgentSDKVersion: agentSDKVersion,
+		AgentSDKVersion: userAgent.agentSDKVersion,
 	}
 
 	metadataUserID := gjson.GetBytes(payload, "metadata.user_id")
@@ -657,26 +653,13 @@ func IsClaudeCodeUserAgent(userAgent string) bool {
 }
 
 func plausibleClaudeCodeUserAgent(userAgent string, cfg *config.Config) bool {
-	userAgent = strings.TrimSpace(userAgent)
-	if !claudeCodeUserAgentPattern.MatchString(userAgent) || !claudeCodeNativeUserAgentPattern.MatchString(userAgent) {
-		return false
-	}
-	candidate, okCandidate := parseClaudeCLIVersion(userAgent)
-	baseline, okBaseline := parseClaudeCLIVersion(defaultClaudeDeviceProfile(cfg).UserAgent)
-	// Patch releases (>= baseline.patch) within the release line preserve native passthrough.
-	return okCandidate && okBaseline && plausibleClaudeCLIVersion(candidate, baseline)
+	parsed, ok := parseClaudeCodeUserAgent(userAgent)
+	return ok && plausibleClaudeCodeVersion(parsed.version, cfg)
 }
 
 func parseClaudeCodeUserAgentDetails(userAgent string) (entrypoint, agentSDKVersion string) {
-	matches := claudeCodeUserAgentDetailsPattern.FindStringSubmatch(strings.TrimSpace(userAgent))
-	if len(matches) < 2 {
-		return "", ""
-	}
-	entrypoint = strings.ToLower(strings.TrimSpace(matches[1]))
-	if len(matches) >= 3 {
-		agentSDKVersion = strings.TrimSpace(matches[2])
-	}
-	return entrypoint, agentSDKVersion
+	parsed, _ := parseClaudeCodeUserAgent(userAgent)
+	return parsed.entrypoint, parsed.agentSDKVersion
 }
 
 func headerValue(headers http.Header, name string) string {
@@ -712,4 +695,19 @@ func headerContainsClaudeCodeBeta(headers http.Header) bool {
 		}
 	}
 	return false
+}
+
+func plausibleClaudeCodeVersion(candidate claudeCLIVersion, cfg *config.Config) bool {
+	baseline, okBaseline := parseClaudeCLIVersion(defaultClaudeDeviceProfile(cfg).UserAgent)
+	// Patch releases (>= baseline.patch) within the release line preserve native passthrough.
+	return okBaseline && plausibleClaudeCLIVersion(candidate, baseline)
+}
+
+func isNativeClaudeXApp(value string) bool {
+	switch value {
+	case "cli", "cli-bg":
+		return true
+	default:
+		return false
+	}
 }

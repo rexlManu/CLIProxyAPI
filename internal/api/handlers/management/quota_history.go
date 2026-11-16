@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -166,7 +167,7 @@ func (h *Handler) recordQuotaHistory(ctx context.Context) {
 		switch strings.ToLower(auth.Provider) {
 		case "claude":
 			target = claudeUsageURL
-			headers = map[string]string{"User-Agent": "claude-cli/2.1.280 (external, cli)", "anthropic-beta": "oauth-2025-04-20"}
+			headers = map[string]string{"anthropic-beta": "oauth-2025-04-20"}
 		case "codex":
 			target = codexUsageURL
 			headers = map[string]string{"User-Agent": "codex-tui/0.149.1 (Mac OS 26.5.2; arm64) iTerm.app/3.6.11 (codex-tui; 0.149.1)"}
@@ -190,6 +191,9 @@ func (h *Handler) recordQuotaHistory(ctx context.Context) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		for k, v := range headers {
 			req.Header.Set(k, v)
+		}
+		if strings.EqualFold(auth.Provider, "claude") {
+			helps.ApplyClaudeDefaultDeviceProfileHeaders(req, h.cfg)
 		}
 		observedAt := time.Now()
 		resp, err := (&http.Client{Transport: h.apiCallTransport(auth, "")}).Do(req)

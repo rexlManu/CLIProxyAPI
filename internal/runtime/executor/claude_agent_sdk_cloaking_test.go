@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -27,9 +28,20 @@ func TestClaudeExecutorAgentSDKCloaking(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					seenBody, _ = io.ReadAll(r.Body)
 					seenHeaders = r.Header.Clone()
+					// Fable 5.2 rejects profiles below Claude Code 2.1.290.
+					version := strings.Split(strings.TrimPrefix(strings.SplitN(r.UserAgent(), " ", 2)[0], "claude-cli/"), ".")
+					patch := 0
+					if len(version) == 3 {
+						patch, _ = strconv.Atoi(version[2])
+					}
+					if patch < 290 {
+						w.WriteHeader(http.StatusBadRequest)
+						_, _ = io.WriteString(w, `{"error":{"type":"invalid_request_error","message":"Claude Code 2.1.290 or newer is required"}}`)
+						return
+					}
 					if operation == "stream" {
 						w.Header().Set("Content-Type", "text/event-stream")
-						_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_sdk\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-sonnet-5-5\",\"content\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+						_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_sdk\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-fable-5-2\",\"content\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 						return
 					}
 					w.Header().Set("Content-Type", "application/json")
@@ -37,7 +49,7 @@ func TestClaudeExecutorAgentSDKCloaking(t *testing.T) {
 						_, _ = io.WriteString(w, `{"input_tokens":1}`)
 						return
 					}
-					_, _ = io.WriteString(w, `{"id":"msg_sdk","type":"message","role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"OK"}],"usage":{"input_tokens":1,"output_tokens":1}}`)
+					_, _ = io.WriteString(w, `{"id":"msg_sdk","type":"message","role":"assistant","model":"claude-fable-5-2","content":[{"type":"text","text":"OK"}],"usage":{"input_tokens":1,"output_tokens":1}}`)
 				}))
 				defer server.Close()
 
@@ -57,8 +69,8 @@ func TestClaudeExecutorAgentSDKCloaking(t *testing.T) {
 					auth.Attributes["cloak_mode"] = "never"
 				}
 				userID, _ := json.Marshal(`{"device_id":"0000000000000000000000000000000000000000000000000000000000000000","account_uuid":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","session_id":"11111111-2222-4333-8444-555555555555"}`)
-				payload := []byte(`{"model":"claude-sonnet-5-5","max_tokens":32,"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.304.179; cc_entrypoint=sdk-ts;"},{"type":"text","text":"You are a Claude agent, built on Anthropic's Claude Agent SDK."},{"type":"text","text":"keep-project-rules"}],"messages":[{"role":"user","content":"hello"}],"metadata":{"user_id":` + string(userID) + `}}`)
-				const sdkUA = "claude-cli/2.1.304 (external, sdk-ts, agent-sdk/0.3.276)"
+				payload := []byte(`{"model":"claude-fable-5-2","max_tokens":32,"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.325.179; cc_entrypoint=sdk-ts;"},{"type":"text","text":"You are a Claude agent, built on Anthropic's Claude Agent SDK."},{"type":"text","text":"keep-project-rules"}],"messages":[{"role":"user","content":"hello"}],"metadata":{"user_id":` + string(userID) + `}}`)
+				const sdkUA = "claude-cli/2.1.325 (external, sdk-ts, agent-sdk/0.3.276)"
 				opts := cliproxyexecutor.Options{
 					SourceFormat:    sdktranslator.FormatClaude,
 					OriginalRequest: payload,
@@ -68,7 +80,7 @@ func TestClaudeExecutorAgentSDKCloaking(t *testing.T) {
 						"Anthropic-Beta": {"claude-code-20250219"},
 					},
 				}
-				req := cliproxyexecutor.Request{Model: "claude-sonnet-5-5", Payload: payload}
+				req := cliproxyexecutor.Request{Model: "claude-fable-5-2", Payload: payload}
 				executor := NewClaudeExecutor(cfg)
 				var errRequest error
 				switch operation {
@@ -132,7 +144,7 @@ func TestClaudeAgentSDKCloakingPreservesSession(t *testing.T) {
 		_, errExecute := executor.Execute(context.Background(), auth, cliproxyexecutor.Request{Model: "claude-sonnet-5-5", Payload: payload}, cliproxyexecutor.Options{
 			SourceFormat: sdktranslator.FormatClaude,
 			Headers: http.Header{
-				"User-Agent":               {"claude-cli/2.1.304 (external, sdk-ts, agent-sdk/0.3.276)"},
+				"User-Agent":               {"claude-cli/2.1.325 (external, sdk-ts, agent-sdk/0.3.276)"},
 				"X-App":                    {"cli"},
 				"Anthropic-Beta":           {"claude-code-20250219"},
 				"X-Claude-Code-Session-Id": {sessionID},
